@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>OgDub.Core</RootNamespace>
+    <AssemblyName>OgDub.Core</AssemblyName>
+    <Company>OG Digital Designs</Company>
+    <Product>OG Dub</Product>
+  </PropertyGroup>
+
+</Project>

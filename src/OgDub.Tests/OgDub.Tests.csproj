@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>OgDub.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OgDub.Core\OgDub.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\OgDub\Legal\TermsOfUse.txt" Link="Legal\TermsOfUse.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\OgDub\app.manifest" Link="app.manifest" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

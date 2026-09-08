@@ -1,0 +1,22 @@
+# Build
+**/bin/
+**/obj/
+**/publish/
+dist/
+*.user
+*.suo
+*.cache
+*.dll
+*.exe
+*.pdb
+*.log
+.env*
+.DS_Store
+
+.vs/
+.idea/
+*.DotSettings.user
+og-dub-crash.txt
+
+# Cursor editor rules stay local — do not publish to JayzoMods
+.cursor/

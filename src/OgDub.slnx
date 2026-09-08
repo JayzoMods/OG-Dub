@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="OgDub.Core/OgDub.Core.csproj" />
+  <Project Path="OgDub/OgDub.csproj" />
+  <Project Path="OgDub.Tests/OgDub.Tests.csproj" />
+</Solution>

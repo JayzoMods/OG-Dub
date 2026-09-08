@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>OgDub</RootNamespace>
+    <AssemblyName>OgDub</AssemblyName>
+    <Product>OG Dub</Product>
+    <Company>OG Digital Designs</Company>
+    <Authors>OG Digital Designs</Authors>
+    <Description>Desk boombox that aims at one Windows app and records it to a cassette crate. Not a stream ripper.</Description>
+    <Version>0.1.0</Version>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OgDub.Core\OgDub.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Legal\TermsOfUse.txt" />
+    <Resource Include="Assets\app.ico" />
+    <Resource Include="Assets\og-favicon.png" />
+    <Resource Include="Assets\og-favicon-light.png" />
+    <Resource Include="Assets\og-mark.png" />
+    <Resource Include="Assets\og-mark-light.png" />
+    <Resource Include="Assets\og-logo.png" />
+    <Resource Include="Assets\og-logo-light.png" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,71 @@
+OG DUB — TERMS AND CONDITIONS
+Publisher: OG Digital Designs
+Version: 1
+Last updated: 9 September 2026
+
+Please read these terms before you Accept. They are the agreement for using OG Dub (“the App”).
+
+These terms do not take away rights you have under the Australian Consumer Law (ACL) or other laws that cannot be excluded. If a part of these terms is inconsistent with a right you cannot give up, that right still applies.
+
+1. Agreement
+By clicking Accept, you agree to these terms. If you do not agree, choose Decline and exit and do not use the App.
+
+2. Who we are
+The App is provided by OG Digital Designs (Australia).
+Contact: enquiries@ogdigitaldesigns.com.au · https://ogdigitaldesigns.com.au
+
+3. Licence to use the App
+OG Digital Designs gives you a personal, non-exclusive, non-transferable licence to install and use the App on computers you are allowed to administer. This is a licence, not a sale. Each person must Accept these terms for themselves.
+
+You must not sell, rent, or lease the App; pretend the App is your own product; or use the App to harm another person’s computer or to break the law.
+
+4. What the App does
+The App is free software. It is a desk boombox for this PC. You aim it at one Windows app (or the whole mix), punch Rec, and it writes a WAV cassette into a crate on this PC. You can play those cassettes and dub more than one onto a mixtape.
+
+It can:
+• list apps that are currently making sound and record one process tree using Windows process loopback;
+• fall back to recording the whole mix if this Windows build cannot isolate one app, and say so on the LCD;
+• stop at the end of a C-60 side (30 minutes) and keep cassettes under Documents\OG Digital Designs\OG Dub.
+
+The App is not a stream ripper. You must have the right to record the sound you aim at. Some protected or DRM audio is captured as silence. The LCD will say so. The App does not invent a song that was not captured.
+
+Windows may show a SmartScreen warning because the published file is not code-signed.
+
+5. What you still decide
+You choose which app to aim at, when to record, when to stop, and which cassettes to play or dub. Read the LCD.
+
+6. Your responsibilities
+You are responsible for only recording audio you are allowed to record, backing up cassettes you care about, and checking the WAV files in File Explorer.
+
+7. Australian Consumer Law
+If the ACL applies to your use of the App, nothing in these terms excludes, restricts, or modifies the consumer guarantees.
+
+Our goods come with guarantees that cannot be excluded under the Australian Consumer Law. You are entitled to a replacement or refund for a major failure and compensation for any other reasonably foreseeable loss and damage. You are also entitled to have the goods repaired or replaced if the goods fail to be of acceptable quality and the failure does not amount to a major failure.
+
+Because the App is supplied free of charge, a refund of the price paid would be $0. Replacement means a fresh copy of the App.
+
+Those guarantees are about the App itself. They do not mean we must recover a take that was silence because the source was protected, or restore a file you deleted from the crate, where the App worked as described.
+
+8. Other liability (only where the law allows)
+To the extent the law allows, and except for rights that cannot be excluded (including the ACL):
+• OG Digital Designs is not liable for loss of recordings, profits, or other loss that you could have avoided by backing up or by not recording; and
+• OG Digital Designs is not liable for loss caused by Windows, the aimed app, DRM, or other software on your PC.
+
+Nothing in these terms excludes liability that cannot be excluded by law.
+
+9. Privacy
+The App stores settings on this PC under your Windows profile (LocalAppData) and cassettes under your Documents library folder (or a folder you choose later). It does not require an online account and does not need the internet to work.
+
+If you email us, we use that correspondence to reply to you.
+
+10. Changes
+If the terms version changes, the App will ask you to Accept again. If you do not Accept, stop using the App.
+
+11. Ending use
+You may stop using the App and uninstall it at any time. Uninstall does not delete your crate unless you delete that folder yourself.
+
+12. Governing law
+These terms are governed by the laws of New South Wales, Australia. Courts of New South Wales have non-exclusive jurisdiction. This does not take away any rights you have under the ACL that cannot be waived.
+
+13. Contact
+Questions: enquiries@ogdigitaldesigns.com.au
