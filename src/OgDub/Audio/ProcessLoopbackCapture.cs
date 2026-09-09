@@ -1,4 +1,3 @@
-using System.IO;
 using System.Runtime.InteropServices;
 using NAudio.Wave;
 
@@ -8,23 +7,25 @@ internal sealed class ProcessLoopbackCapture : IDisposable
 {
     private CancellationTokenSource? _cts;
     private Task? _task;
-    private string? _path;
+    private Action<WaveFormat>? _onFormat;
+    private Action<byte[], int>? _onSamples;
 
     public bool IsRunning => _task is { IsCompleted: false };
     public float Peak { get; private set; }
     public string Mode { get; private set; } = "";
 
-    public void Start(uint processId, bool includeTree, string wavPath, TimeSpan limit)
+    public void Start(uint processId, bool includeTree, Action<WaveFormat> onFormat, Action<byte[], int> onSamples)
     {
         Stop();
-        _path = wavPath;
         Peak = 0;
         Mode = includeTree ? "APP" : "MIX-EXCL";
+        _onFormat = onFormat;
+        _onSamples = onSamples;
         _cts = new CancellationTokenSource();
         var token = _cts.Token;
         var armed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _task = Task.Factory.StartNew(
-            () => Run(processId, includeTree, wavPath, limit, token, armed),
+            () => Run(processId, includeTree, token, armed),
             token,
             TaskCreationOptions.LongRunning,
             TaskScheduler.Default);
@@ -46,11 +47,13 @@ internal sealed class ProcessLoopbackCapture : IDisposable
         _cts?.Dispose();
         _cts = null;
         _task = null;
+        _onFormat = null;
+        _onSamples = null;
     }
 
     public void Dispose() => Stop();
 
-    private void Run(uint processId, bool includeTree, string wavPath, TimeSpan limit, CancellationToken token, TaskCompletionSource armed)
+    private void Run(uint processId, bool includeTree, CancellationToken token, TaskCompletionSource armed)
     {
         var handler = new ActivateHandler();
         var activation = new WasapiNative.AudioClientActivationParams
@@ -115,18 +118,16 @@ internal sealed class ProcessLoopbackCapture : IDisposable
             if (hr < 0 || captureObj is not IAudioCaptureClient capture)
                 throw Marshal.GetExceptionForHR(hr) ?? new InvalidOperationException("IAudioCaptureClient missing.");
 
-            Directory.CreateDirectory(Path.GetDirectoryName(wavPath)!);
-            using var writer = new WaveFileWriter(wavPath, format);
+            _onFormat?.Invoke(format);
             hr = client.Start();
             if (hr < 0)
                 throw Marshal.GetExceptionForHR(hr) ?? new InvalidOperationException("IAudioClient.Start failed.");
 
             armed.TrySetResult();
-            var started = DateTime.UtcNow;
             var block = format.BlockAlign;
             try
             {
-                while (!token.IsCancellationRequested && DateTime.UtcNow - started < limit)
+                while (!token.IsCancellationRequested)
                 {
                     hr = capture.GetNextPacketSize(out var frames);
                     if (hr < 0)
@@ -143,13 +144,14 @@ internal sealed class ProcessLoopbackCapture : IDisposable
 
                     try
                     {
-                        if (available > 0 && data != 0 && (flags & WasapiNative.BufferSilent) == 0)
+                        if (available > 0 && data != 0)
                         {
                             var bytes = (int)available * block;
                             var buffer = new byte[bytes];
-                            Marshal.Copy(data, buffer, 0, bytes);
-                            writer.Write(buffer, 0, bytes);
-                            NotePeak(buffer, format);
+                            if ((flags & WasapiNative.BufferSilent) == 0)
+                                Marshal.Copy(data, buffer, 0, bytes);
+                            Peak = Math.Max(Peak, PcmPeak.Max(buffer, bytes, format));
+                            _onSamples?.Invoke(buffer, bytes);
                         }
                     }
                     finally
@@ -173,28 +175,6 @@ internal sealed class ProcessLoopbackCapture : IDisposable
             Marshal.FreeHGlobal(blob);
             if (op is not null)
                 Marshal.ReleaseComObject(op);
-        }
-    }
-
-    private void NotePeak(byte[] buffer, WaveFormat format)
-    {
-        if (format.Encoding == WaveFormatEncoding.IeeeFloat && format.BitsPerSample == 32)
-        {
-            for (var i = 0; i + 4 <= buffer.Length; i += 4)
-            {
-                var sample = Math.Abs(BitConverter.ToSingle(buffer, i));
-                if (sample > Peak)
-                    Peak = sample;
-            }
-        }
-        else if (format.BitsPerSample == 16)
-        {
-            for (var i = 0; i + 2 <= buffer.Length; i += 2)
-            {
-                var sample = Math.Abs(BitConverter.ToInt16(buffer, i) / 32768f);
-                if (sample > Peak)
-                    Peak = sample;
-            }
         }
     }
 }

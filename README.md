@@ -23,7 +23,7 @@ See [HOW-TO-USE.md](HOW-TO-USE.md).
 
 ## v1 stages
 
-Work is gated in [V1-STAGES.md](V1-STAGES.md). Stage 1 is the boombox + per-app capture + crate + play + dub.
+Work is gated in [V1-STAGES.md](V1-STAGES.md). Stage 7 counts 3-2-1 on the LCD before Rec starts the tape, and lights CLIP when the aimed peak hits 0.99.
 
 ## Locks
 

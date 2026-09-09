@@ -26,7 +26,13 @@ public sealed class CrateStore
         try
         {
             var loaded = JsonSerializer.Deserialize<CrateIndex>(File.ReadAllText(IndexPath));
-            return loaded?.Cassettes ?? [];
+            if (loaded?.Cassettes is null)
+                return [];
+
+            foreach (var cassette in loaded.Cassettes)
+                cassette.Markers ??= [];
+
+            return loaded.Cassettes;
         }
         catch (JsonException)
         {
@@ -45,5 +51,31 @@ public sealed class CrateStore
     {
         var name = Path.GetFileName(cassette.WavFileName);
         return Path.Combine(_libraryRoot, name);
+    }
+
+    public string ArtworkPath(CassetteRecord cassette)
+    {
+        if (string.IsNullOrWhiteSpace(cassette.ArtworkFileName))
+            return "";
+
+        var name = Path.GetFileName(cassette.ArtworkFileName);
+        if (string.IsNullOrWhiteSpace(name) || name is "." or "..")
+            return "";
+
+        var full = Path.GetFullPath(Path.Combine(_libraryRoot, name));
+        return LibraryPaths.IsUnderLibrary(full, _libraryRoot) ? full : "";
+    }
+
+    public string SideBPath(CassetteRecord cassette)
+    {
+        if (string.IsNullOrWhiteSpace(cassette.SideBWavFileName))
+            return "";
+
+        var name = Path.GetFileName(cassette.SideBWavFileName);
+        if (string.IsNullOrWhiteSpace(name) || name is "." or "..")
+            return "";
+
+        var full = Path.GetFullPath(Path.Combine(_libraryRoot, name));
+        return LibraryPaths.IsUnderLibrary(full, _libraryRoot) ? full : "";
     }
 }

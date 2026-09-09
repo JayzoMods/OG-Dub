@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="OG Dub"
         Width="460"
-        Height="620"
+        Height="710"
         ResizeMode="NoResize"
         WindowStyle="None"
         Background="Transparent"
@@ -18,6 +18,9 @@
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <CheckBox Content="Top" Foreground="{StaticResource KeyText}"
                               IsChecked="{Binding AlwaysOnTop}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <CheckBox Content="Per song" Foreground="{StaticResource KeyText}"
+                              IsChecked="{Binding SplitOnSong}" VerticalAlignment="Center" Margin="0,0,8,0"
+                              ToolTip="While Rec is on, a new Windows now-playing title ejects and starts a fresh cassette." />
                     <Button Style="{StaticResource DeckKey}" Content="Terms" MinWidth="48" Command="{Binding TermsCommand}" />
                     <Button Style="{StaticResource DeckKey}" Content="×" MinWidth="36" Click="Close_OnClick" />
                 </StackPanel>
@@ -37,8 +40,23 @@
                                 <Border CornerRadius="4" Padding="8,6" Margin="0,0,0,6"
                                         BorderThickness="2" BorderBrush="#111"
                                         Background="{Binding ShellColour}">
-                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="#1A120C"
-                                               TextWrapping="Wrap" />
+                                    <DockPanel>
+                                        <Image DockPanel.Dock="Left" Width="36" Height="36" Margin="0,0,8,0"
+                                               Stretch="UniformToFill"
+                                               Source="{Binding Artwork}"
+                                               Visibility="{Binding HasArtwork, Converter={StaticResource BoolToVis}}" />
+                                        <TextBlock DockPanel.Dock="Right" Text="B" FontWeight="Black" FontSize="12"
+                                                   Foreground="#1A120C" VerticalAlignment="Center" Margin="8,0,0,0"
+                                                   Visibility="{Binding HasSideB, Converter={StaticResource BoolToVis}}" />
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="#1A120C"
+                                                       TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding LoudnessLabel}" FontSize="10" Foreground="#1A120C"
+                                                       Visibility="{Binding HasLoudness, Converter={StaticResource BoolToVis}}" />
+                                            <TextBlock Text="{Binding MarkerLabel}" FontSize="10" Foreground="#1A120C"
+                                                       Visibility="{Binding HasMarkers, Converter={StaticResource BoolToVis}}" />
+                                        </StackPanel>
+                                    </DockPanel>
                                 </Border>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
@@ -63,6 +81,10 @@
                             <StackPanel Grid.Row="2" Orientation="Horizontal">
                                 <TextBlock Text="{Binding LcdTime}" Foreground="{StaticResource LcdText}"
                                            FontFamily="Consolas" FontSize="14" />
+                                <TextBlock Text="  " Foreground="{StaticResource LcdText}"
+                                           FontFamily="Consolas" FontSize="14" />
+                                <TextBlock Text="{Binding LcdCounter}" Foreground="{StaticResource LcdText}"
+                                           FontFamily="Consolas" FontSize="14" />
                                 <Ellipse Width="10" Height="10" Margin="10,0,0,0" VerticalAlignment="Center"
                                          Fill="{StaticResource RecRed}">
                                     <Ellipse.Style>
@@ -70,6 +92,19 @@
                                             <Setter Property="Opacity" Value="0.25" />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding RecLit}" Value="True">
+                                                    <Setter Property="Opacity" Value="1" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Ellipse.Style>
+                                </Ellipse>
+                                <Ellipse Width="10" Height="10" Margin="6,0,0,0" VerticalAlignment="Center"
+                                         Fill="{StaticResource ClipAmber}">
+                                    <Ellipse.Style>
+                                        <Style TargetType="Ellipse">
+                                            <Setter Property="Opacity" Value="0.25" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ClipLit}" Value="True">
                                                     <Setter Property="Opacity" Value="1" />
                                                 </DataTrigger>
                                             </Style.Triggers>
@@ -95,13 +130,24 @@
                     <ComboBox Margin="0,10,0,0" ItemsSource="{Binding Stations}"
                               SelectedItem="{Binding SelectedStation}"
                               DisplayMemberPath="Label" />
+                    <CheckBox Margin="0,8,0,0" Content="Mic (Side B)" Foreground="{StaticResource KeyText}"
+                              IsChecked="{Binding RecordMic}"
+                              ToolTip="Records the default microphone onto Side B. Not mixed into the app tape. 32-bit float with a −12 dB pad." />
+                    <ComboBox Margin="0,8,0,0" ItemsSource="{Binding RenderDevices}"
+                              SelectedItem="{Binding SelectedRenderDevice}"
+                              DisplayMemberPath="Label"
+                              ToolTip="Where Play and Flip send the cassette. Windows default follows the system playback device." />
 
                     <WrapPanel Margin="0,8,0,0" HorizontalAlignment="Center">
                         <Button Style="{StaticResource DeckKey}" Content="SCAN" Command="{Binding ScanCommand}" />
                         <Button Style="{StaticResource DeckKey}" Content="REC" Background="#6B1E1E"
                                 Command="{Binding RecCommand}" />
+                        <Button Style="{StaticResource DeckKey}" Content="KEEP" Command="{Binding KeepCommand}" />
                         <Button Style="{StaticResource DeckKey}" Content="STOP" Command="{Binding StopCommand}" />
                         <Button Style="{StaticResource DeckKey}" Content="PLAY" Command="{Binding PlayCommand}" />
+                        <Button Style="{StaticResource DeckKey}" Content="FLIP" Command="{Binding FlipCommand}" />
+                        <Button Style="{StaticResource DeckKey}" Content="MARK" Command="{Binding MarkCommand}" />
+                        <Button Style="{StaticResource DeckKey}" Content="CUE" Command="{Binding CueCommand}" />
                         <Button Style="{StaticResource DeckKey}" Content="DUB" Command="{Binding DubCommand}" />
                     </WrapPanel>
                 </StackPanel>

@@ -8,6 +8,9 @@ public sealed class AppSettings
 {
     public string TermsAcceptedVersion { get; set; } = "";
     public bool AlwaysOnTop { get; set; } = true;
+    public bool SplitOnSong { get; set; } = true;
+    public bool RecordMic { get; set; }
+    public string PlaybackDeviceId { get; set; } = "";
 }
 
 public sealed class AppSettingsStore
@@ -30,6 +33,7 @@ public sealed class AppSettingsStore
             if (loaded is not null)
             {
                 loaded.TermsAcceptedVersion ??= "";
+                loaded.PlaybackDeviceId ??= "";
                 Current = loaded;
             }
         }
