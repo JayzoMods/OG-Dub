@@ -24,6 +24,17 @@ public sealed class LibraryPathsTests
         Assert.True(LibraryPaths.IsUnderLibrary(file, root));
         Assert.False(LibraryPaths.IsUnderLibrary(Path.GetTempPath(), root));
     }
+
+    [Fact]
+    public void Chosen_path_is_full_and_rejects_blank()
+    {
+        Assert.False(LibraryPaths.TryNormalizeChosen("  ", out _));
+        Assert.False(LibraryPaths.TryNormalizeChosen(null, out _));
+        var nested = Path.Combine(Path.GetTempPath(), "og-dub-lib-" + Guid.NewGuid().ToString("N"), "..", "og-dub-chosen");
+        Assert.True(LibraryPaths.TryNormalizeChosen(nested, out var full));
+        Assert.Equal(Path.GetFullPath(nested), full);
+        Assert.False(full.Contains("..", StringComparison.Ordinal));
+    }
 }
 
 public sealed class CassetteNamingTests
@@ -601,3 +612,122 @@ public sealed class ClipLightTests
         Assert.True(ClipLight.IsOn(1f));
     }
 }
+
+public sealed class CrateFavoritesTests
+{
+    [Fact]
+    public void Favorites_folder_stays_under_library()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "og-dub-fav-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var fav = LibraryPaths.FavoritesFolder(root);
+            Assert.True(LibraryPaths.IsUnderLibrary(fav, root));
+            Assert.Equal("Favorites", Path.GetFileName(fav));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Copy_to_favorites_and_delete_round_trip()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "og-dub-fav2-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var store = new CrateStore(root);
+            var wavName = "take.wav";
+            var wavPath = Path.Combine(root, wavName);
+            File.WriteAllBytes(wavPath, new byte[] { 1, 2, 3, 4 });
+            var record = new CassetteRecord
+            {
+                Id = "abc",
+                Title = "Song",
+                WavFileName = wavName,
+                Silent = false,
+                ShellColour = "#C45C26"
+            };
+            store.Save([record]);
+
+            Assert.True(store.TryCopyToFavorites(record));
+            Assert.True(store.IsFavorite(record));
+            Assert.True(File.Exists(Path.Combine(store.FavoritesRoot, wavName)));
+
+            Assert.False(store.TryCopyToFavorites(new CassetteRecord { Id = "x", Silent = true, WavFileName = wavName }));
+
+            Assert.True(store.TryDeleteCassette("abc"));
+            Assert.Empty(store.Load());
+            Assert.Empty(store.LoadFavorites());
+            Assert.False(File.Exists(wavPath));
+            Assert.False(File.Exists(Path.Combine(store.FavoritesRoot, wavName)));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Rename_and_unfavourite_keep_crate_copy()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "og-dub-fav3-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var store = new CrateStore(root);
+            var wavName = "take.wav";
+            File.WriteAllBytes(Path.Combine(root, wavName), new byte[] { 1, 2, 3, 4 });
+            var record = new CassetteRecord
+            {
+                Id = "abc",
+                Title = "Song",
+                WavFileName = wavName,
+                Silent = false
+            };
+            store.Save([record]);
+            Assert.True(store.TryCopyToFavorites(record));
+            Assert.True(store.TryRename("abc", "  Night  Call  "));
+            Assert.Equal("Night Call", store.Load()[0].Title);
+            Assert.Equal("Night Call", store.LoadFavorites()[0].Title);
+            Assert.False(store.TryRename("abc", "   "));
+            Assert.True(store.TryRemoveFromFavorites("abc"));
+            Assert.False(store.IsFavorite(record));
+            Assert.Single(store.Load());
+            Assert.True(File.Exists(Path.Combine(root, wavName)));
+            Assert.False(File.Exists(Path.Combine(store.FavoritesRoot, wavName)));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Concurrent_save_and_load_do_not_throw()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "og-dub-lock-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        try
+        {
+            var store = new CrateStore(root);
+            Parallel.For(0, 24, i =>
+            {
+                store.Save([new CassetteRecord { Id = i.ToString(), Title = "t", WavFileName = "a.wav" }]);
+                _ = store.Load();
+            });
+            Assert.NotNull(store.Load());
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+}
+

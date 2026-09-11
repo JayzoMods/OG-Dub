@@ -11,6 +11,8 @@ public sealed class AppSettings
     public bool SplitOnSong { get; set; } = true;
     public bool RecordMic { get; set; }
     public string PlaybackDeviceId { get; set; } = "";
+    public bool? GlobalHotkeys { get; set; }
+    public string LibraryRoot { get; set; } = "";
 }
 
 public sealed class AppSettingsStore
@@ -34,6 +36,7 @@ public sealed class AppSettingsStore
             {
                 loaded.TermsAcceptedVersion ??= "";
                 loaded.PlaybackDeviceId ??= "";
+                loaded.LibraryRoot ??= "";
                 Current = loaded;
             }
         }

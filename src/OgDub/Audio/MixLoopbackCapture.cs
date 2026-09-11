@@ -46,7 +46,7 @@ internal sealed class MixLoopbackCapture : IDisposable
         if (capture is null || e.BytesRecorded <= 0)
             return;
 
-        Peak = Math.Max(Peak, PcmPeak.Max(e.Buffer, e.BytesRecorded, capture.WaveFormat));
+        Peak = PcmPeak.Max(e.Buffer, e.BytesRecorded, capture.WaveFormat);
         _onSamples?.Invoke(e.Buffer, e.BytesRecorded);
     }
 

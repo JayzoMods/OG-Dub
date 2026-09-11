@@ -17,6 +17,7 @@ public sealed class CassetteItem
     public required string WavPath { get; init; }
     public required string SideBPath { get; init; }
     public ImageSource? Artwork { get; init; }
+    public bool IsFavorite { get; init; }
     public string Title => Record.Title;
     public string ShellColour => Record.Silent ? "#4A5560" : Record.ShellColour;
     public bool HasArtwork => Artwork is not null;
@@ -27,6 +28,8 @@ public sealed class CassetteItem
     public string MarkerLabel => HasMarkers
         ? string.Join("  ", Record.Markers.Take(6).Select(m => TapeCounter.Lcd(m.Counter)))
         : "";
+    public bool CanFavorite => !Record.Silent;
+    public string FavoriteGlyph => IsFavorite ? "\u2605" : "\u2606";
 }
 
 public sealed class StationItem
@@ -39,7 +42,7 @@ public partial class DeckViewModel : ObservableObject
 {
     private static readonly string[] Shells = ["#C45C26", "#2F6F6A", "#6B3FA0", "#C9A227", "#3D5A80"];
 
-    private readonly CrateStore _crate;
+    private CrateStore _crate;
     private readonly AppSettingsStore _settings;
     private readonly ListenSession _listen = new();
     private readonly MicSideBCapture _mic = new();
@@ -58,7 +61,7 @@ public partial class DeckViewModel : ObservableObject
     private int _rollBusy;
     private bool _playSideB;
     private bool _loadingRender;
-    private bool _leaderBusy;
+    private bool _shuttingDown;
     private CancellationTokenSource? _leaderCts;
     private readonly List<TapeMarker> _pendingMarkers = [];
 
@@ -69,6 +72,7 @@ public partial class DeckViewModel : ObservableObject
         AlwaysOnTop = settings.Current.AlwaysOnTop;
         SplitOnSong = settings.Current.SplitOnSong;
         RecordMic = settings.Current.RecordMic;
+        GlobalHotkeys = settings.Current.GlobalHotkeys ?? true;
         ReloadCrate();
         RefreshStations();
         RefreshRenderDevices();
@@ -93,6 +97,9 @@ public partial class DeckViewModel : ObservableObject
     [ObservableProperty] private bool alwaysOnTop;
     [ObservableProperty] private bool splitOnSong;
     [ObservableProperty] private bool recordMic;
+    [ObservableProperty] private bool globalHotkeys;
+    [ObservableProperty] private bool leaderBusy;
+    [ObservableProperty] private bool stationsMenuOpen;
     [ObservableProperty] private RenderDeviceItem? selectedRenderDevice;
     [ObservableProperty] private string status = "Punch Rec. KEEP dumps the last 15 seconds. C-60 Side A is 30 minutes.";
 
@@ -114,6 +121,18 @@ public partial class DeckViewModel : ObservableObject
         _settings.Save();
     }
 
+    partial void OnGlobalHotkeysChanged(bool value)
+    {
+        _settings.Current.GlobalHotkeys = value;
+        _settings.Save();
+    }
+
+    partial void OnIsRecordingChanged(bool value) => NotifyTransport();
+
+    partial void OnIsPlayingChanged(bool value) => NotifyTransport();
+
+    partial void OnLeaderBusyChanged(bool value) => NotifyTransport();
+
     partial void OnSelectedRenderDeviceChanged(RenderDeviceItem? value)
     {
         if (_loadingRender)
@@ -125,12 +144,14 @@ public partial class DeckViewModel : ObservableObject
     partial void OnSelectedCassetteChanged(CassetteItem? value)
     {
         _playSideB = false;
+        NotifyTransport();
     }
 
     partial void OnSelectedStationChanged(StationItem? value)
     {
+        NotifyTransport();
         var station = value?.Station;
-        if (IsRecording || _leaderBusy || station is null)
+        if (IsRecording || LeaderBusy || station is null)
             return;
         if (_listen.IsListening
             && _listen.AimedProcessId == station.ProcessId
@@ -141,7 +162,7 @@ public partial class DeckViewModel : ObservableObject
 
     public void Tick()
     {
-        if (_leaderBusy)
+        if (LeaderBusy)
         {
             Vu = Math.Max(_listen.Peak, SelectedStation?.Station.Peak ?? 0);
             ClipLit = ClipLight.IsOn((float)Vu);
@@ -190,16 +211,31 @@ public partial class DeckViewModel : ObservableObject
 
     public void RefreshStations()
     {
+        if (StationsMenuOpen)
+            return;
+
+        var next = WasapiStations.List().Select(s => new StationItem { Station = s }).ToList();
+        if (StationsLookSame(next))
+            return;
+
         var selectedId = SelectedStation?.Station.ProcessId;
         var selectedMix = SelectedStation?.Station.IsWholeMix ?? false;
         Stations.Clear();
-        foreach (var station in WasapiStations.List())
-            Stations.Add(new StationItem { Station = station });
+        foreach (var station in next)
+            Stations.Add(station);
 
         SelectedStation = Stations.FirstOrDefault(s =>
             selectedMix && s.Station.IsWholeMix
             || !selectedMix && s.Station.ProcessId == selectedId)
             ?? Stations.FirstOrDefault();
+        NotifyTransport();
+    }
+
+    public void ReplaceCrate(CrateStore crate)
+    {
+        _crate = crate;
+        ReloadCrate();
+        Status = "Crate folder is now " + crate.LibraryRoot;
     }
 
     public void RefreshRenderDevices()
@@ -232,15 +268,20 @@ public partial class DeckViewModel : ObservableObject
                 Record = record,
                 WavPath = _crate.WavPath(record),
                 SideBPath = _crate.SideBPath(record),
-                Artwork = TryLoadArtwork(_crate.ArtworkPath(record))
+                Artwork = TryLoadArtwork(_crate.ArtworkPath(record)),
+                IsFavorite = _crate.IsFavorite(record)
             });
         }
+
+        NotifyTransport();
     }
 
-    [RelayCommand]
+    private bool CanScan() => !LeaderBusy && Stations.Count > 0;
+
+    [RelayCommand(CanExecute = nameof(CanScan))]
     private void Scan()
     {
-        if (_leaderBusy || Stations.Count == 0)
+        if (LeaderBusy || Stations.Count == 0)
             return;
         var i = SelectedStation is null ? 0 : Stations.IndexOf(SelectedStation);
         SelectedStation = Stations[(i + 1) % Stations.Count];
@@ -248,10 +289,12 @@ public partial class DeckViewModel : ObservableObject
         RefreshRenderDevices();
     }
 
-    [RelayCommand]
+    private bool CanRec() => !IsRecording && !LeaderBusy && SelectedStation is not null;
+
+    [RelayCommand(CanExecute = nameof(CanRec))]
     private async Task RecAsync()
     {
-        if (IsRecording || _leaderBusy)
+        if (IsRecording || LeaderBusy || _shuttingDown)
             return;
 
         _player.Stop();
@@ -263,7 +306,7 @@ public partial class DeckViewModel : ObservableObject
             return;
         }
 
-        _leaderBusy = true;
+        LeaderBusy = true;
         _leaderCts?.Dispose();
         _leaderCts = new CancellationTokenSource();
         var token = _leaderCts.Token;
@@ -280,6 +323,8 @@ public partial class DeckViewModel : ObservableObject
             }
 
             token.ThrowIfCancellationRequested();
+            if (_shuttingDown)
+                throw new OperationCanceledException();
 
             var when = DateTimeOffset.Now;
             var stem = CassetteNaming.FileStem(station.Name, when);
@@ -343,16 +388,18 @@ public partial class DeckViewModel : ObservableObject
         }
         finally
         {
-            _leaderBusy = false;
+            LeaderBusy = false;
             _leaderCts?.Dispose();
             _leaderCts = null;
         }
     }
 
-    [RelayCommand]
+    private bool CanStop() => LeaderBusy || IsRecording || IsPlaying;
+
+    [RelayCommand(CanExecute = nameof(CanStop))]
     private async Task StopAsync()
     {
-        if (_leaderBusy)
+        if (LeaderBusy)
         {
             _leaderCts?.Cancel();
             return;
@@ -386,10 +433,12 @@ public partial class DeckViewModel : ObservableObject
         _pendingStation = null;
         _takeNowPlaying = null;
         if (wav is not null && station is not null)
-            EjectCassette(wav, station, when, nowPlaying, takePeak < 0.0005f, TimeSpan.Zero, mode, sideB, TakePendingMarkers(), updateLcd: true);
+            await EjectCassetteAsync(wav, station, when, nowPlaying, takePeak < 0.0005f, TimeSpan.Zero, mode, sideB, TakePendingMarkers(), updateLcd: true);
     }
 
-    [RelayCommand]
+    private bool CanKeep() => SelectedStation is not null && !LeaderBusy;
+
+    [RelayCommand(CanExecute = nameof(CanKeep))]
     private async Task KeepAsync()
     {
         var station = SelectedStation?.Station;
@@ -438,15 +487,17 @@ public partial class DeckViewModel : ObservableObject
             nowPlaying = null;
         }
 
-        EjectCassette(wav, station, when, nowPlaying, peak < 0.0005f, duration, "REPLAY", null, null, updateLcd: !IsRecording);
+        await EjectCassetteAsync(wav, station, when, nowPlaying, peak < 0.0005f, duration, "REPLAY", null, null, updateLcd: !IsRecording);
         if (IsRecording)
             Status = "Kept the last 15 seconds. Still recording.";
     }
 
-    [RelayCommand]
+    private bool CanPlay() => !IsRecording && !LeaderBusy && SelectedCassette is not null;
+
+    [RelayCommand(CanExecute = nameof(CanPlay))]
     private void Play()
     {
-        if (IsRecording || _leaderBusy || SelectedCassette is null)
+        if (IsRecording || LeaderBusy || SelectedCassette is null)
             return;
         try
         {
@@ -468,10 +519,12 @@ public partial class DeckViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
+    private bool CanFlip() => CanPlay() && SelectedCassette is { HasSideB: true };
+
+    [RelayCommand(CanExecute = nameof(CanFlip))]
     private void Flip()
     {
-        if (IsRecording || _leaderBusy || SelectedCassette is null)
+        if (IsRecording || LeaderBusy || SelectedCassette is null)
             return;
         if (!SelectedCassette.HasSideB)
         {
@@ -488,8 +541,9 @@ public partial class DeckViewModel : ObservableObject
             LcdLine = SelectedCassette.Title.ToUpperInvariant();
             LcdMode = _playSideB ? "PLAY B" : "PLAY A";
             Status = _playSideB
-                ? "Playing Side B (mic, −12 dB)."
+                ? "Playing Side B (mic, −12 dB). Cue is for Side A marks."
                 : "Playing Side A.";
+            NotifyTransport();
         }
         catch (Exception ex)
         {
@@ -498,7 +552,9 @@ public partial class DeckViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
+    private bool CanMark() => IsRecording;
+
+    [RelayCommand(CanExecute = nameof(CanMark))]
     private void Mark()
     {
         if (!IsRecording)
@@ -537,7 +593,9 @@ public partial class DeckViewModel : ObservableObject
         Status = "Marked " + mark.Label + ".";
     }
 
-    [RelayCommand]
+    private bool CanCue() => IsPlaying && !IsRecording && SelectedCassette is { HasMarkers: true } && !_playSideB;
+
+    [RelayCommand(CanExecute = nameof(CanCue))]
     private void Cue()
     {
         if (IsRecording)
@@ -549,6 +607,13 @@ public partial class DeckViewModel : ObservableObject
         if (!IsPlaying || SelectedCassette is null)
         {
             Status = "Play a cassette, then Cue.";
+            return;
+        }
+
+        if (_playSideB)
+        {
+            LcdMode = "CUE A";
+            Status = "Cue is for Side A marks. Flip back to Side A, then Cue.";
             return;
         }
 
@@ -565,10 +630,12 @@ public partial class DeckViewModel : ObservableObject
         Status = "Cued to " + (string.IsNullOrWhiteSpace(next.Label) ? TapeCounter.Lcd(next.Counter) : next.Label) + ".";
     }
 
-    [RelayCommand]
-    private void Dub()
+    private bool CanDub() => !IsRecording && !LeaderBusy && Cassettes.Count >= 2;
+
+    [RelayCommand(CanExecute = nameof(CanDub))]
+    private async Task DubAsync()
     {
-        if (IsRecording || _leaderBusy)
+        if (IsRecording || LeaderBusy)
             return;
         if (Cassettes.Count < 2)
         {
@@ -583,7 +650,7 @@ public partial class DeckViewModel : ObservableObject
         {
             WavConcat.Dub(ordered.Select(c => c.WavPath).ToList(), dest, TimeSpan.FromSeconds(2));
             var id = Guid.NewGuid().ToString("N");
-            var measured = MeasureCassette(dest, when);
+            var measured = await Task.Run(() => MeasureCassette(dest, when));
             var title = CassetteNaming.JCard("Mixtape", when, measured.Duration);
             TagCassette(dest, title, id, when, measured.Loud);
             var record = new CassetteRecord
@@ -624,14 +691,144 @@ public partial class DeckViewModel : ObservableObject
             AppHost.Terms.Show(window);
     }
 
+
+    [RelayCommand]
+    private void DeleteCassette(CassetteItem? item)
+    {
+        if (item is null)
+            return;
+
+        var ask = MessageBox.Show(
+            "Delete this cassette from the crate?",
+            "OG Dub",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (ask != MessageBoxResult.Yes)
+            return;
+
+        if (SelectedCassette?.Record.Id == item.Record.Id)
+        {
+            _player.Stop();
+            IsPlaying = false;
+            SelectedCassette = null;
+        }
+
+        if (!_crate.TryDeleteCassette(item.Record.Id))
+        {
+            Status = "Could not delete that cassette.";
+            return;
+        }
+
+        ReloadCrate();
+        NotifyTransport();
+        Status = "Cassette deleted from the crate.";
+    }
+
+    [RelayCommand]
+    private void FavoriteCassette(CassetteItem? item)
+    {
+        if (item is null || !item.CanFavorite)
+            return;
+
+        var id = item.Record.Id;
+        if (item.IsFavorite)
+        {
+            if (!_crate.TryRemoveFromFavorites(id))
+            {
+                Status = "Could not remove that cassette from Favorites.";
+                return;
+            }
+
+            ReloadCrate();
+            SelectedCassette = Cassettes.FirstOrDefault(c => c.Record.Id == id);
+            Status = "Removed from Favorites. The crate copy stays.";
+            return;
+        }
+
+        if (!_crate.TryCopyToFavorites(item.Record))
+        {
+            Status = "Could not copy that cassette into Favorites.";
+            return;
+        }
+
+        ReloadCrate();
+        SelectedCassette = Cassettes.FirstOrDefault(c => c.Record.Id == id);
+        Status = "Saved a copy into the Favorites folder.";
+    }
+
+    [RelayCommand]
+    private void RenameCassette(CassetteItem? item)
+    {
+        if (item is null)
+            return;
+
+        var owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
+            ?? Application.Current.MainWindow;
+        var prompt = new Views.NamePromptWindow(item.Title);
+        if (owner is not null)
+            prompt.Owner = owner;
+        if (prompt.ShowDialog() != true)
+            return;
+
+        if (!_crate.TryRename(item.Record.Id, prompt.Result))
+        {
+            Status = "Could not rename that cassette.";
+            return;
+        }
+
+        var id = item.Record.Id;
+        ReloadCrate();
+        SelectedCassette = Cassettes.FirstOrDefault(c => c.Record.Id == id);
+        Status = "J-card renamed.";
+    }
+
     public void Shutdown()
     {
+        _shuttingDown = true;
         _leaderCts?.Cancel();
+        if (IsRecording)
+            FlushRecording();
         _listen.Dispose();
         _mic.Dispose();
         _player.Dispose();
         _listenLock.Dispose();
         _leaderCts?.Dispose();
+    }
+
+    private void FlushRecording()
+    {
+        var wav = _pendingWav;
+        var station = _pendingStation;
+        var when = _recStarted;
+        var nowPlaying = _takeNowPlaying;
+        var mode = _pendingMode;
+        var takePeak = _listen.TakePeak;
+        var sideB = _pendingSideB;
+        _pendingSideB = null;
+        try
+        {
+            _listenLock.Wait();
+            try
+            {
+                _listen.EndTape();
+                _mic.Stop();
+            }
+            finally
+            {
+                _listenLock.Release();
+            }
+        }
+        catch (Exception)
+        {
+        }
+
+        IsRecording = false;
+        RecLit = false;
+        _pendingWav = null;
+        _pendingStation = null;
+        _takeNowPlaying = null;
+        if (wav is not null && station is not null)
+            EjectCassetteSync(wav, station, when, nowPlaying, takePeak < 0.0005f, TimeSpan.Zero, mode, sideB, TakePendingMarkers(), updateLcd: false);
     }
 
     private async Task EnsureListenAsync(Station station)
@@ -706,7 +903,7 @@ public partial class DeckViewModel : ObservableObject
         _pendingSideB = null;
         await EndTapeAsync();
         _pendingWav = null;
-        EjectCassette(wav, station, when, prev, takePeak < 0.0005f, TimeSpan.Zero, mode, sideB, TakePendingMarkers(), updateLcd: false);
+        await EjectCassetteAsync(wav, station, when, prev, takePeak < 0.0005f, TimeSpan.Zero, mode, sideB, TakePendingMarkers(), updateLcd: false);
 
         var newWhen = DateTimeOffset.Now;
         var newWav = UniqueWav(CassetteNaming.FileStem(station.Name, newWhen));
@@ -740,7 +937,26 @@ public partial class DeckViewModel : ObservableObject
         }
     }
 
-    private void EjectCassette(
+    private async Task EjectCassetteAsync(
+        string wav,
+        Station station,
+        DateTimeOffset when,
+        NowPlaying? nowPlaying,
+        bool silent,
+        TimeSpan duration,
+        string captureMode,
+        string? sideBWav,
+        IReadOnlyList<TapeMarker>? markers,
+        bool updateLcd)
+    {
+        if (!File.Exists(wav))
+            return;
+
+        var measured = await Task.Run(() => MeasureCassette(wav, when));
+        EjectCassetteApply(wav, station, when, nowPlaying, silent, duration, captureMode, sideBWav, markers, updateLcd, measured);
+    }
+
+    private void EjectCassetteSync(
         string wav,
         Station station,
         DateTimeOffset when,
@@ -756,6 +972,22 @@ public partial class DeckViewModel : ObservableObject
             return;
 
         var measured = MeasureCassette(wav, when);
+        EjectCassetteApply(wav, station, when, nowPlaying, silent, duration, captureMode, sideBWav, markers, updateLcd, measured);
+    }
+
+    private void EjectCassetteApply(
+        string wav,
+        Station station,
+        DateTimeOffset when,
+        NowPlaying? nowPlaying,
+        bool silent,
+        TimeSpan duration,
+        string captureMode,
+        string? sideBWav,
+        IReadOnlyList<TapeMarker>? markers,
+        bool updateLcd,
+        (TimeSpan Duration, LoudnessResult Loud, int SampleRate) measured)
+    {
         if (measured.Duration > TimeSpan.Zero)
             duration = measured.Duration;
 
@@ -978,6 +1210,34 @@ public partial class DeckViewModel : ObservableObject
         if (count <= 0)
             return status;
         return status + " " + count + (count == 1 ? " mark." : " marks.");
+    }
+
+    private void NotifyTransport()
+    {
+        ScanCommand.NotifyCanExecuteChanged();
+        RecCommand.NotifyCanExecuteChanged();
+        KeepCommand.NotifyCanExecuteChanged();
+        StopCommand.NotifyCanExecuteChanged();
+        PlayCommand.NotifyCanExecuteChanged();
+        FlipCommand.NotifyCanExecuteChanged();
+        MarkCommand.NotifyCanExecuteChanged();
+        CueCommand.NotifyCanExecuteChanged();
+        DubCommand.NotifyCanExecuteChanged();
+    }
+
+    private bool StationsLookSame(IReadOnlyList<StationItem> next)
+    {
+        if (Stations.Count != next.Count)
+            return false;
+        for (var i = 0; i < next.Count; i++)
+        {
+            var a = Stations[i].Station;
+            var b = next[i].Station;
+            if (a.ProcessId != b.ProcessId || a.IsWholeMix != b.IsWholeMix || a.Name != b.Name)
+                return false;
+        }
+
+        return true;
     }
 
     private string UniqueWav(string stem)

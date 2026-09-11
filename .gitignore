@@ -20,3 +20,6 @@ og-dub-crash.txt
 
 # Cursor editor rules stay local — do not publish to JayzoMods
 .cursor/
+
+artifacts/
+

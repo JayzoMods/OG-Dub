@@ -48,7 +48,7 @@ internal sealed class MicSideBCapture : IDisposable
         if (format is null || writer is null || e.BytesRecorded <= 0)
             return;
 
-        Peak = Math.Max(Peak, PcmPeak.Max(e.Buffer, e.BytesRecorded, format));
+        Peak = PcmPeak.Max(e.Buffer, e.BytesRecorded, format);
         var copy = new byte[e.BytesRecorded];
         Buffer.BlockCopy(e.Buffer, 0, copy, 0, e.BytesRecorded);
         if (PcmPeak.IsFloat32(format))

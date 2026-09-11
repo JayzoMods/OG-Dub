@@ -23,7 +23,7 @@ See [HOW-TO-USE.md](HOW-TO-USE.md).
 
 ## v1 stages
 
-Work is gated in [V1-STAGES.md](V1-STAGES.md). Stage 7 counts 3-2-1 on the LCD before Rec starts the tape, and lights CLIP when the aimed peak hits 0.99.
+Work is gated in [V1-STAGES.md](V1-STAGES.md). v0.8.0 is Stage 7 plus polish: global Rec/Stop hotkeys, How-To tour, crate rename/favourites/folder, and midnight boombox chrome.
 
 ## Locks
 

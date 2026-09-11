@@ -150,7 +150,7 @@ internal sealed class ProcessLoopbackCapture : IDisposable
                             var buffer = new byte[bytes];
                             if ((flags & WasapiNative.BufferSilent) == 0)
                                 Marshal.Copy(data, buffer, 0, bytes);
-                            Peak = Math.Max(Peak, PcmPeak.Max(buffer, bytes, format));
+                            Peak = PcmPeak.Max(buffer, bytes, format);
                             _onSamples?.Invoke(buffer, bytes);
                         }
                     }

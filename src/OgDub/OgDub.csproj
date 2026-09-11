@@ -12,7 +12,7 @@
     <Company>OG Digital Designs</Company>
     <Authors>OG Digital Designs</Authors>
     <Description>Desk boombox that aims at one Windows app and records it to a cassette crate. Not a stream ripper.</Description>
-    <Version>0.7.0</Version>
+    <Version>0.8.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
@@ -30,12 +30,9 @@
   <ItemGroup>
     <EmbeddedResource Include="Legal\TermsOfUse.txt" />
     <Resource Include="Assets\app.ico" />
-    <Resource Include="Assets\og-favicon.png" />
-    <Resource Include="Assets\og-favicon-light.png" />
-    <Resource Include="Assets\og-mark.png" />
-    <Resource Include="Assets\og-mark-light.png" />
-    <Resource Include="Assets\og-logo.png" />
-    <Resource Include="Assets\og-logo-light.png" />
+    <Resource Include="Assets\og-dub-mark.png" />
+    <Resource Include="Assets\og-dub-favicon.png" />
+    <Resource Include="Assets\og-dub-logo.png" />
   </ItemGroup>
 
 </Project>
