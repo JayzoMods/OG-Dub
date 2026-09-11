@@ -1,8 +1,11 @@
 # OG Dub
 
-Publisher: **OG Digital Designs**.
+A desk boombox for Windows. You aim it at one app, punch Rec, and a labelled cassette lands in a crate. Dub two tapes onto a mixtape. No cloud. No transcript. **Not a stream ripper.** Free for anyone who wants it, and a public portfolio piece by [Jayden O'Grady](https://ogdigitaldesigns.com.au) / OG Digital Designs — a demo of the work for possible employers, same setup as [OG Job Book](https://github.com/JayzoMods/og-job-book).
 
-A desk boombox for Windows. You aim it at one app, punch Rec, and a labelled cassette lands in a crate. Dub two tapes onto a mixtape. No cloud. No transcript. **Not a stream ripper.**
+**Download:** [latest release](https://github.com/JayzoMods/OG-Dub/releases/latest) — unpack the zip and run `OgDub.exe`.
+**Source:** [github.com/JayzoMods/OG-Dub](https://github.com/JayzoMods/OG-Dub)
+**Guide:** [HOW-TO-USE.md](HOW-TO-USE.md)
+**Contact:** [enquiries@ogdigitaldesigns.com.au](mailto:enquiries@ogdigitaldesigns.com.au)
 
 ## Run
 
@@ -11,15 +14,9 @@ dotnet test src\OgDub.slnx
 dotnet run --project src\OgDub\OgDub.csproj
 ```
 
-Private GitHub: [JayzoMods/OG-Dub](https://github.com/JayzoMods/OG-Dub). Stay private until Jayden says otherwise.
-
 Cassettes: `%USERPROFILE%\Documents\OG Digital Designs\OG Dub\`
 
 Settings: `%LOCALAPPDATA%\OG Digital Designs\OG Dub\`
-
-## How to use
-
-See [HOW-TO-USE.md](HOW-TO-USE.md).
 
 ## v1 stages
 
