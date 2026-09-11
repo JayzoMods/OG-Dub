@@ -13,6 +13,12 @@ public static class HowToTour
     [
         new()
         {
+            TargetName = "RecordTab",
+            Title = "Record",
+            Body = "This is the boombox. Aim a station, punch Rec or KEEP, and cassettes land in the crate. You can ignore Edit forever."
+        },
+        new()
+        {
             TargetName = "StationCombo",
             Title = "Aim a station",
             Body = "Scan or pick the app that is making sound. Whole mix records everything except this boombox when process loopback works."
@@ -32,8 +38,26 @@ public static class HowToTour
         new()
         {
             TargetName = "PerSongCheck",
-            Title = "Per song and mic",
-            Body = "Leave Per song ticked to eject a fresh cassette when Windows reports a new track. Tick Mic (Side B) to record the default microphone onto a second track, padded −12 dB — not mixed into the app tape."
+            Title = "Per song and live voice",
+            Body = "Leave Per song ticked to eject a fresh cassette when Windows reports a new track. Tick Live voice, pick your mic, punch MIC ON to hear yourself in Play-to, and watch the MIC meter — the voice take is padded −12 dB and is not mixed into the app tape."
+        },
+        new()
+        {
+            TargetName = "MicCombo",
+            Title = "Choose the mic",
+            Body = "Every plugged-in microphone Windows can see shows up here. Pick the one you want before Rec. The MIC meter follows that device so you can confirm it is live."
+        },
+        new()
+        {
+            TargetName = "MicOnToggle",
+            Title = "MIC ON / OFF",
+            Body = "MIC ON routes your voice to Play-to so you can hear yourself while Live voice is armed. MIC OFF mutes that monitor — Rec still lays the voice take. Use headphones to avoid feedback."
+        },
+        new()
+        {
+            TargetName = "EditTab",
+            Title = "Edit (optional)",
+            Body = "Edit talks only to local models on this PC (Ollama, LM Studio-style, LocalAI). No cloud. Punch Refresh to scan localhost. Chat works on a chat runtime. Rewriting a WAV needs a local audio runtime. GPU load is that server, not OG Dub. Record still works with nothing installed."
         },
         new()
         {

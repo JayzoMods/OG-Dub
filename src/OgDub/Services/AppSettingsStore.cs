@@ -10,9 +10,15 @@ public sealed class AppSettings
     public bool AlwaysOnTop { get; set; } = true;
     public bool SplitOnSong { get; set; } = true;
     public bool RecordMic { get; set; }
+    public bool MicOn { get; set; } = true;
     public string PlaybackDeviceId { get; set; } = "";
+    public string MicDeviceId { get; set; } = "";
     public bool? GlobalHotkeys { get; set; }
     public string LibraryRoot { get; set; } = "";
+    public string LastTab { get; set; } = "";
+    public string ExtraLocalBaseUrl { get; set; } = "";
+    public string LastProviderId { get; set; } = "";
+    public string LastModelId { get; set; } = "";
 }
 
 public sealed class AppSettingsStore
@@ -36,7 +42,12 @@ public sealed class AppSettingsStore
             {
                 loaded.TermsAcceptedVersion ??= "";
                 loaded.PlaybackDeviceId ??= "";
+                loaded.MicDeviceId ??= "";
                 loaded.LibraryRoot ??= "";
+                loaded.LastTab ??= "";
+                loaded.ExtraLocalBaseUrl ??= "";
+                loaded.LastProviderId ??= "";
+                loaded.LastModelId ??= "";
                 Current = loaded;
             }
         }

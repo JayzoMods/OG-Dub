@@ -62,6 +62,8 @@ public partial class MainWindow : Window
             _tick.Tick += (_, _) => AppHost.Deck.Tick();
             _tick.Start();
             ApplyHotkeys(AppHost.Deck.GlobalHotkeys);
+            if (string.Equals(AppHost.Settings.Current.LastTab, "edit", StringComparison.OrdinalIgnoreCase))
+                AppHost.Deck.ShowEditTab = true;
         }
         catch (Exception ex)
         {
@@ -386,10 +388,16 @@ public partial class MainWindow : Window
             return;
 
         var step = HowToTour.Steps[_howToIndex];
+        if (step.TargetName is "EditTab" or "EditPanelHost")
+            AppHost.Deck.ShowEditTab = true;
+        else
+            AppHost.Deck.ShowEditTab = false;
+
         HowToTitle.Text = step.Title;
         HowToBody.Text = step.Body;
         HowToIndex.Text = (_howToIndex + 1) + " / " + HowToTour.Steps.Count;
         HowToOverlay.UpdateLayout();
+        ChromeGrid.UpdateLayout();
 
         var target = FindName(step.TargetName) as FrameworkElement;
         if (target is null)
@@ -415,6 +423,8 @@ public partial class MainWindow : Window
     private void Stations_OnDropDownOpened(object sender, EventArgs e) => AppHost.Deck.StationsMenuOpen = true;
 
     private void Stations_OnDropDownClosed(object sender, EventArgs e) => AppHost.Deck.StationsMenuOpen = false;
+
+    private void Mics_OnDropDownOpened(object sender, EventArgs e) => AppHost.Deck.RefreshMicDevices();
 
     private void CrateList_OnMouseDoubleClick(object sender, MouseButtonEventArgs e)
     {

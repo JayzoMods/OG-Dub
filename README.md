@@ -20,7 +20,7 @@ Settings: `%LOCALAPPDATA%\OG Digital Designs\OG Dub\`
 
 ## v1 stages
 
-Work is gated in [V1-STAGES.md](V1-STAGES.md). v0.8.0 is Stage 7 plus polish: global Rec/Stop hotkeys, How-To tour, crate rename/favourites/folder, and midnight boombox chrome.
+Work is gated in [V1-STAGES.md](V1-STAGES.md). v0.9.0 adds optional **Record / Edit** tabs. Edit probes localhost (Ollama, LM Studio-style, LocalAI) for chat and generative audio. Record is unchanged if you never open Edit.
 
 ## Locks
 

@@ -731,3 +731,68 @@ public sealed class CrateFavoritesTests
     }
 }
 
+public sealed class LocalLoopbackTests
+{
+    [Fact]
+    public void Accepts_loopback_http()
+    {
+        Assert.True(LocalLoopback.TryNormalizeBase("http://127.0.0.1:11434", out var url));
+        Assert.Equal("http://127.0.0.1:11434", url);
+        Assert.True(LocalLoopback.TryNormalizeBase("http://localhost:1234/v1", out var studio));
+        Assert.Equal("http://localhost:1234", studio);
+        Assert.True(LocalLoopback.TryNormalizeBase("http://[::1]:8080/", out var v6));
+        Assert.Contains("8080", v6, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Refuses_non_loopback_and_blank()
+    {
+        Assert.False(LocalLoopback.TryNormalizeBase("https://api.openai.com/v1", out _));
+        Assert.False(LocalLoopback.TryNormalizeBase("http://192.168.1.10:11434", out _));
+        Assert.False(LocalLoopback.TryNormalizeBase("  ", out _));
+        Assert.False(LocalLoopback.TryNormalizeBase("file:///c:/models", out _));
+    }
+
+    [Fact]
+    public void Riff_header_is_detected()
+    {
+        var wav = "RIFF"u8.ToArray().Concat(new byte[] { 0, 0, 0, 0 }).Concat("WAVE"u8.ToArray()).ToArray();
+        Assert.True(LocalLoopback.IsRiffWave(wav));
+        Assert.False(LocalLoopback.IsRiffWave("ID3"u8.ToArray()));
+        Assert.False(LocalLoopback.IsRiffWave([]));
+    }
+
+    [Fact]
+    public void Edited_stem_keeps_sanitize()
+    {
+        var when = new DateTimeOffset(2026, 9, 11, 12, 0, 0, TimeSpan.FromHours(10));
+        var stem = LocalLoopback.EditedStem("Nightcall<>", when);
+        Assert.Contains("Nightcall edit", stem, StringComparison.Ordinal);
+        Assert.DoesNotContain("<", stem, StringComparison.Ordinal);
+    }
+}
+
+public sealed class LocalModelCatalogTests
+{
+    [Fact]
+    public void Parses_ollama_tags_and_chat()
+    {
+        var tags = """{"models":[{"name":"llama3:latest"},{"model":"qwen2.5"}]}""";
+        var models = LocalModelCatalog.ParseOllamaTags(tags);
+        Assert.Contains("llama3:latest", models);
+        Assert.Contains("qwen2.5", models);
+        Assert.Equal("hello", LocalModelCatalog.ParseOllamaChat("""{"message":{"role":"assistant","content":"hello"}}"""));
+        Assert.Empty(LocalModelCatalog.ParseOllamaTags("{"));
+    }
+
+    [Fact]
+    public void Parses_openai_models_and_chat()
+    {
+        var models = LocalModelCatalog.ParseOpenAiModels("""{"data":[{"id":"local-model"}]}""");
+        Assert.Single(models);
+        Assert.Equal("local-model", models[0]);
+        Assert.Equal("hi", LocalModelCatalog.ParseOpenAiChat("""{"choices":[{"message":{"content":"hi"}}]}"""));
+        Assert.Equal("nope", LocalModelCatalog.ParseErrorMessage("""{"error":{"message":"nope"}}"""));
+    }
+}
+

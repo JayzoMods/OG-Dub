@@ -61,6 +61,7 @@ public partial class DeckViewModel : ObservableObject
     private int _rollBusy;
     private bool _playSideB;
     private bool _loadingRender;
+    private bool _loadingMic;
     private bool _shuttingDown;
     private CancellationTokenSource? _leaderCts;
     private readonly List<TapeMarker> _pendingMarkers = [];
@@ -72,15 +73,22 @@ public partial class DeckViewModel : ObservableObject
         AlwaysOnTop = settings.Current.AlwaysOnTop;
         SplitOnSong = settings.Current.SplitOnSong;
         RecordMic = settings.Current.RecordMic;
+        MicOn = settings.Current.MicOn;
         GlobalHotkeys = settings.Current.GlobalHotkeys ?? true;
         ReloadCrate();
         RefreshStations();
         RefreshRenderDevices();
+        RefreshMicDevices();
+        SyncMicMonitor();
+        Edit = new EditViewModel(this, settings);
     }
+
+    public EditViewModel Edit { get; }
 
     public ObservableCollection<StationItem> Stations { get; } = [];
     public ObservableCollection<CassetteItem> Cassettes { get; } = [];
     public ObservableCollection<RenderDeviceItem> RenderDevices { get; } = [];
+    public ObservableCollection<MicDeviceItem> MicDevices { get; } = [];
 
     [ObservableProperty] private StationItem? selectedStation;
     [ObservableProperty] private CassetteItem? selectedCassette;
@@ -93,14 +101,18 @@ public partial class DeckViewModel : ObservableObject
     [ObservableProperty] private bool isRecording;
     [ObservableProperty] private bool isPlaying;
     [ObservableProperty] private double vu;
+    [ObservableProperty] private double micVu;
     [ObservableProperty] private double tapePack = 1;
     [ObservableProperty] private bool alwaysOnTop;
     [ObservableProperty] private bool splitOnSong;
     [ObservableProperty] private bool recordMic;
+    [ObservableProperty] private bool micOn = true;
     [ObservableProperty] private bool globalHotkeys;
     [ObservableProperty] private bool leaderBusy;
     [ObservableProperty] private bool stationsMenuOpen;
     [ObservableProperty] private RenderDeviceItem? selectedRenderDevice;
+    [ObservableProperty] private MicDeviceItem? selectedMicDevice;
+    [ObservableProperty] private bool showEditTab;
     [ObservableProperty] private string status = "Punch Rec. KEEP dumps the last 15 seconds. C-60 Side A is 30 minutes.";
 
     partial void OnAlwaysOnTopChanged(bool value)
@@ -119,6 +131,26 @@ public partial class DeckViewModel : ObservableObject
     {
         _settings.Current.RecordMic = value;
         _settings.Save();
+        SyncMicMonitor();
+        if (value)
+        {
+            Status = MicOn
+                ? "Live voice armed. MIC ON — you should hear yourself in Play-to (use headphones). After Stop, Flip plays the voice take."
+                : "Live voice armed. Punch MIC ON to hear yourself in Play-to. After Stop, Flip plays the voice take.";
+        }
+    }
+
+    partial void OnMicOnChanged(bool value)
+    {
+        _settings.Current.MicOn = value;
+        _settings.Save();
+        SyncMicMonitor();
+        if (RecordMic)
+        {
+            Status = value
+                ? "MIC ON — live voice in Play-to. Use headphones to avoid feedback."
+                : "MIC OFF — monitor muted. Rec still lays the voice take while Live voice is ticked.";
+        }
     }
 
     partial void OnGlobalHotkeysChanged(bool value)
@@ -126,6 +158,20 @@ public partial class DeckViewModel : ObservableObject
         _settings.Current.GlobalHotkeys = value;
         _settings.Save();
     }
+
+    partial void OnShowEditTabChanged(bool value)
+    {
+        _settings.Current.LastTab = value ? "edit" : "record";
+        _settings.Save();
+        if (value)
+            _ = Edit.OnOpenedAsync();
+    }
+
+    [RelayCommand]
+    private void ShowRecord() => ShowEditTab = false;
+
+    [RelayCommand]
+    private void ShowEdit() => ShowEditTab = true;
 
     partial void OnIsRecordingChanged(bool value) => NotifyTransport();
 
@@ -139,6 +185,17 @@ public partial class DeckViewModel : ObservableObject
             return;
         _settings.Current.PlaybackDeviceId = value?.Id ?? "";
         _settings.Save();
+        SyncMicMonitor();
+    }
+
+    partial void OnSelectedMicDeviceChanged(MicDeviceItem? value)
+    {
+        if (_loadingMic)
+            return;
+        _settings.Current.MicDeviceId = value?.Id ?? "";
+        _settings.Save();
+        if (!_mic.IsTaping)
+            SyncMicMonitor();
     }
 
     partial void OnSelectedCassetteChanged(CassetteItem? value)
@@ -165,6 +222,7 @@ public partial class DeckViewModel : ObservableObject
         if (LeaderBusy)
         {
             Vu = Math.Max(_listen.Peak, SelectedStation?.Station.Peak ?? 0);
+            MicVu = _mic.Peak;
             ClipLit = ClipLight.IsOn((float)Vu);
             RecLit = DateTimeOffset.Now.Millisecond < 500;
             return;
@@ -174,6 +232,7 @@ public partial class DeckViewModel : ObservableObject
         {
             RefreshStations();
             Vu = Math.Max(_listen.Peak, SelectedStation?.Station.Peak ?? 0);
+            MicVu = _mic.Peak;
             ClipLit = ClipLight.IsOn((float)Vu);
             _player.ReapIfIdle();
             IsPlaying = _player.IsPlaying;
@@ -199,6 +258,7 @@ public partial class DeckViewModel : ObservableObject
         LcdCounter = TapeCounter.Lcd(TapeCounter.FromElapsed(elapsed));
         TapePack = left.TotalSeconds / TapeSide.C60SideA.TotalSeconds;
         Vu = Math.Max(_listen.Peak, _mic.Peak);
+        MicVu = _mic.Peak;
         ClipLit = ClipLight.IsOn((float)Vu);
         RecLit = DateTimeOffset.Now.Millisecond < 500;
         MaybeRefreshSmtc(_pendingStation);
@@ -255,6 +315,43 @@ public partial class DeckViewModel : ObservableObject
         finally
         {
             _loadingRender = false;
+        }
+    }
+
+    public void RefreshMicDevices()
+    {
+        _loadingMic = true;
+        try
+        {
+            var keep = SelectedMicDevice?.Id ?? _settings.Current.MicDeviceId ?? "";
+            MicDevices.Clear();
+            MicDevices.Add(new MicDeviceItem { Id = "", Label = "Windows default mic" });
+            foreach (var device in MicInputs.List())
+                MicDevices.Add(device);
+
+            SelectedMicDevice = MicDevices.FirstOrDefault(d => d.Id == keep)
+                ?? MicDevices[0];
+        }
+        finally
+        {
+            _loadingMic = false;
+        }
+    }
+
+    public void SyncMicMonitor()
+    {
+        if (_shuttingDown)
+            return;
+        try
+        {
+            if (!_mic.IsTaping)
+                _mic.StartMonitor(SelectedMicDevice?.Id);
+            _mic.SetHearThrough(RecordMic && MicOn, SelectedRenderDevice?.Id);
+        }
+        catch (Exception)
+        {
+            Status = "Could not open that microphone. Pick another mic or check Windows privacy settings.";
+            MicVu = 0;
         }
     }
 
@@ -507,7 +604,7 @@ public partial class DeckViewModel : ObservableObject
             LcdLine = SelectedCassette.Title.ToUpperInvariant();
             LcdMode = SelectedCassette.HasSideB ? "PLAY A" : "PLAY";
             Status = SelectedCassette.HasSideB
-                ? "Playing Side A. Flip for Side B (mic)."
+                ? "Playing Side A. Flip for the live voice take."
                 : "Playing the crate. Stop to halt.";
             if (SelectedCassette.HasMarkers)
                 Status += " Cue jumps marks.";
@@ -528,7 +625,7 @@ public partial class DeckViewModel : ObservableObject
             return;
         if (!SelectedCassette.HasSideB)
         {
-            Status = "That cassette has no Side B. Tick Mic before Rec.";
+            Status = "That cassette has no voice take. Tick Live voice before Rec.";
             return;
         }
 
@@ -541,7 +638,7 @@ public partial class DeckViewModel : ObservableObject
             LcdLine = SelectedCassette.Title.ToUpperInvariant();
             LcdMode = _playSideB ? "PLAY B" : "PLAY A";
             Status = _playSideB
-                ? "Playing Side B (mic, −12 dB). Cue is for Side A marks."
+                ? "Playing live voice take (−12 dB). Cue is for Side A marks."
                 : "Playing Side A.";
             NotifyTransport();
         }
@@ -785,6 +882,8 @@ public partial class DeckViewModel : ObservableObject
     public void Shutdown()
     {
         _shuttingDown = true;
+        Edit.CancelJob();
+        Edit.DisposeProbe();
         _leaderCts?.Cancel();
         if (IsRecording)
             FlushRecording();
@@ -811,7 +910,7 @@ public partial class DeckViewModel : ObservableObject
             try
             {
                 _listen.EndTape();
-                _mic.Stop();
+                _mic.StopTape();
             }
             finally
             {
@@ -879,7 +978,7 @@ public partial class DeckViewModel : ObservableObject
             await Task.Run(() =>
             {
                 _listen.EndTape();
-                _mic.Stop();
+                _mic.StopTape();
             });
         }
         finally
@@ -1068,7 +1167,7 @@ public partial class DeckViewModel : ObservableObject
             }
 
             if (!string.IsNullOrWhiteSpace(record.SideBWavFileName))
-                Status += " Flip plays Side B (mic).";
+                Status += " Flip plays the live voice take.";
             Status = WithLoudness(Status, record.LoudnessLufs);
             Status = WithMarks(Status, record.Markers.Count);
         }
@@ -1080,7 +1179,7 @@ public partial class DeckViewModel : ObservableObject
                 ? "Kept the last 15 seconds in the crate."
                 : string.IsNullOrWhiteSpace(record.SideBWavFileName)
                     ? "Cassette in the crate. Play it, dub it, or drag the file out of the folder."
-                    : "Cassette in the crate. Flip plays Side B (mic, −12 dB).";
+                    : "Cassette in the crate. Flip plays the live voice take (−12 dB).";
             Status = WithLoudness(Status, record.LoudnessLufs);
             Status = WithMarks(Status, record.Markers.Count);
         }
@@ -1095,7 +1194,7 @@ public partial class DeckViewModel : ObservableObject
 
         try
         {
-            _mic.Start(wav);
+            _mic.StartTape(wav, SelectedMicDevice?.Id);
             _pendingSideB = wav;
         }
         catch (Exception)
@@ -1107,10 +1206,8 @@ public partial class DeckViewModel : ObservableObject
 
     private string RecStatus()
     {
-        if (SplitOnSong && RecordMic)
-            return "Recording Side A + mic Side B (−12 dB). A new song starts a new tape.";
         if (RecordMic)
-            return "Recording Side A + mic Side B (−12 dB). Stop or wait for the side to run out.";
+            return "Recording app tape + live voice (−12 dB). Hear-through follows MIC ON — use headphones. Stop or wait for the side to run out.";
         if (SplitOnSong)
             return "Recording. A new song starts a new tape. Stop or wait for the side to run out.";
         return "Recording. Stop or wait for the side to run out.";
@@ -1251,6 +1348,38 @@ public partial class DeckViewModel : ObservableObject
         }
 
         return dest;
+    }
+
+    public async Task<bool> ImportEditedCassetteAsync(byte[] wavBytes, string sourceTitle, CancellationToken cancel)
+    {
+        if (wavBytes is null || wavBytes.Length < 12 || !LocalLoopback.IsRiffWave(wavBytes))
+            return false;
+
+        var when = DateTimeOffset.Now;
+        var dest = UniqueWav(LocalLoopback.EditedStem(sourceTitle, when));
+        var full = Path.GetFullPath(dest);
+        if (!LibraryPaths.IsUnderLibrary(full, _crate.LibraryRoot))
+            return false;
+
+        try
+        {
+            await File.WriteAllBytesAsync(full, wavBytes, cancel);
+            cancel.ThrowIfCancellationRequested();
+            var measured = await Task.Run(() => MeasureCassette(full, when), cancel);
+            cancel.ThrowIfCancellationRequested();
+            var silent = measured.Duration <= TimeSpan.Zero;
+            var name = CassetteNaming.Sanitize(sourceTitle);
+            if (!name.EndsWith(" (edit)", StringComparison.OrdinalIgnoreCase))
+                name += " (edit)";
+            var station = new Station { ProcessId = 0, Name = name, Peak = 0, IsWholeMix = false };
+            EjectCassetteApply(full, station, when, null, silent, measured.Duration, "EDIT", null, null, true, measured);
+            return true;
+        }
+        catch (Exception)
+        {
+            TryDelete(full);
+            throw;
+        }
     }
 
     private string NextShell()

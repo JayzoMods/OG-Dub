@@ -1,7 +1,7 @@
 OG DUB — TERMS AND CONDITIONS
 Publisher: OG Digital Designs
-Version: 1
-Last updated: 9 September 2026
+Version: 2
+Last updated: 11 September 2026
 
 Please read these terms before you Accept. They are the agreement for using OG Dub (“the App”).
 
@@ -25,9 +25,10 @@ The App is free software. It is a desk boombox for this PC. You aim it at one Wi
 It can:
 • list apps that are currently making sound and record one process tree using Windows process loopback;
 • fall back to recording the whole mix if this Windows build cannot isolate one app, and say so on the LCD;
-• stop at the end of a C-60 side (30 minutes) and keep cassettes under Documents\OG Digital Designs\OG Dub.
+• stop at the end of a C-60 side (30 minutes) and keep cassettes under Documents\OG Digital Designs\OG Dub;
+• optionally talk to a local model runtime you already run on this PC (for example Ollama or LocalAI) from the Edit tab, and write a new cassette from a local audio rewrite. That path stays on localhost. It does not require the internet and does not upload your takes.
 
-The App is not a stream ripper. You must have the right to record the sound you aim at. Some protected or DRM audio is captured as silence. The LCD will say so. The App does not invent a song that was not captured.
+The App is not a stream ripper. You must have the right to record the sound you aim at, and the right to transform those recordings if you use Edit. Some protected or DRM audio is captured as silence. The LCD will say so. The App does not invent a song that was not captured.
 
 Windows may show a SmartScreen warning because the published file is not code-signed.
 
@@ -54,7 +55,7 @@ To the extent the law allows, and except for rights that cannot be excluded (inc
 Nothing in these terms excludes liability that cannot be excluded by law.
 
 9. Privacy
-The App stores settings on this PC under your Windows profile (LocalAppData) and cassettes under your Documents library folder (or a folder you choose later). It does not require an online account and does not need the internet to work.
+The App stores settings on this PC under your Windows profile (LocalAppData) and cassettes under your Documents library folder (or a folder you choose later). It does not require an online account and does not need the internet to record. Optional Edit only contacts loopback addresses on this PC. OG Dub does not send cassette audio to the public internet.
 
 If you email us, we use that correspondence to reply to you.
 

@@ -1,0 +1,96 @@
+<UserControl x:Class="OgDub.Views.EditPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ai="clr-namespace:OgDub.Services.LocalAi">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" MinHeight="80" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="{StaticResource LcdBg}" CornerRadius="6" Padding="10" Height="64"
+                BorderBrush="#1C3A28" BorderThickness="1">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <TextBlock Text="{Binding LcdMode}" Foreground="{StaticResource LcdText}"
+                           FontFamily="Consolas" FontSize="11" />
+                <TextBlock Grid.Row="1" Text="{Binding LcdLine}" Foreground="{StaticResource LcdText}"
+                           FontFamily="Consolas" FontSize="14" FontWeight="Bold"
+                           TextWrapping="Wrap" VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+
+        <StackPanel Grid.Row="1" Margin="0,8,0,0">
+            <TextBlock Text="Cassette" FontSize="10" FontWeight="Bold"
+                       Foreground="{StaticResource AmberBrush}" Margin="0,0,0,4" />
+            <ComboBox Style="{StaticResource DeckComboBox}"
+                      ItemsSource="{Binding Targets}"
+                      SelectedItem="{Binding SelectedTarget}"
+                      DisplayMemberPath="Label"
+                      ToolTip="The crate cassette Edit will rewrite. Original stays. Pick a tape in the crate first." />
+            <Grid Margin="0,8,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ComboBox Style="{StaticResource DeckComboBox}"
+                          ItemsSource="{Binding Providers}"
+                          SelectedItem="{Binding SelectedProvider}"
+                          DisplayMemberPath="Label"
+                          ToolTip="Local runtimes found on this PC. Nothing is contacted until you open Edit or punch Refresh." />
+                <Button Grid.Column="1" Style="{StaticResource DeckKey}" Content="Refresh"
+                        Command="{Binding RefreshCommand}" MinWidth="72"
+                        ToolTip="Probe localhost again. Short timeout. Does not load models into OG Dub." />
+            </Grid>
+            <ComboBox Style="{StaticResource DeckComboBox}" Margin="0,6,0,0"
+                      ItemsSource="{Binding Models}"
+                      SelectedItem="{Binding SelectedModel}"
+                      ToolTip="Models reported by the selected local runtime." />
+            <TextBox Margin="0,6,0,0" Padding="8,6" FontSize="12"
+                     Foreground="{StaticResource KeyText}" Background="#1A120E"
+                     BorderBrush="#6A5638" BorderThickness="1"
+                     Text="{Binding ExtraBaseUrl, UpdateSourceTrigger=LostFocus}"
+                     ToolTip="Optional extra localhost URL (LM Studio, Cline-style OpenAI server). Loopback only." />
+            <TextBlock Margin="0,6,0,0" FontSize="11" Foreground="#C9B8A8" TextWrapping="Wrap"
+                       Text="{Binding EmptyHint}"
+                       Visibility="{Binding HasNoProviders, Converter={StaticResource BoolToVis}}" />
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="2" Margin="0,8,0,0" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Messages}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type ai:ChatTurn}">
+                        <Border Margin="0,0,0,8" Padding="8,6" CornerRadius="4" Background="#1A120E"
+                                BorderBrush="#3A2A22" BorderThickness="1">
+                            <StackPanel>
+                                <TextBlock Text="{Binding Role}" FontSize="10" FontWeight="Bold"
+                                           Foreground="{StaticResource AmberBrush}" />
+                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="12"
+                                           Foreground="{StaticResource KeyText}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <DockPanel Grid.Row="3" Margin="0,8,0,0">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Style="{StaticResource DeckKey}" Content="Cancel" Command="{Binding CancelCommand}" MinWidth="72" />
+                <Button Style="{StaticResource DeckKey}" Content="Send" Background="#8B1E24"
+                        Command="{Binding SendCommand}" MinWidth="72" />
+            </StackPanel>
+            <TextBox x:Name="EditPromptBox" MinHeight="48" Padding="8,6" FontSize="13" TextWrapping="Wrap"
+                     AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+                     Foreground="{StaticResource KeyText}" Background="#1A120E"
+                     BorderBrush="#6A5638" BorderThickness="1"
+                     Text="{Binding Draft, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="Prompt the local model. Send chats. If the runtime can transform audio, it also rewrites the selected cassette into a new crate take." />
+        </DockPanel>
+    </Grid>
+</UserControl>

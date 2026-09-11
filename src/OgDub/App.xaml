@@ -1,9 +1,12 @@
 <Application x:Class="OgDub.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:OgDub"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <local:InverseBoolConverter x:Key="InverseBool" />
+        <local:InverseBoolToVisConverter x:Key="InverseBoolToVis" />
         <Color x:Key="Shell">#16110E</Color>
         <Color x:Key="ShellHi">#3E2C24</Color>
         <Color x:Key="Amber">#FFB000</Color>
@@ -62,6 +65,45 @@
                                         <DropShadowEffect BlurRadius="1" ShadowDepth="0" Opacity="0.2" Color="#000" />
                                     </Setter.Value>
                                 </Setter>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Cap" Property="BorderBrush" Value="{StaticResource AmberBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.42" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="RadioButton" x:Key="DeckTab">
+            <Setter Property="Foreground" Value="{StaticResource KeyText}" />
+            <Setter Property="Background" Value="{StaticResource KeyCap}" />
+            <Setter Property="BorderBrush" Value="#7A6256" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="Margin" Value="4" />
+            <Setter Property="MinWidth" Value="64" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Cap"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Cap" Property="Background" Value="#3A2E18" />
+                                <Setter TargetName="Cap" Property="BorderBrush" Value="{StaticResource AmberBrush}" />
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Cap" Property="BorderBrush" Value="{StaticResource AmberBrush}" />
