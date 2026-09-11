@@ -31,5 +31,6 @@ Work is gated in [V1-STAGES.md](V1-STAGES.md). v0.9.0 adds optional **Record / E
 - Process loopback first; whole-mix fallback with an honest LCD
 - Terms Accept / Decline
 - `asInvoker` (no admin)
+- Edit tab talks to `localhost` only (Ollama, LM Studio-style, LocalAI) — no cloud APIs, crate WAVs never leave the PC
 
 Do not develop this inside Software Planning.
